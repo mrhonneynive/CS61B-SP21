@@ -1,11 +1,12 @@
 package game2048;
 
+import java.io.IOException;
 import java.util.Formatter;
 import java.util.Observable;
 
 
 /** The state of a game of 2048.
- *  @author TODO: YOUR NAME HERE
+ *  @author Hasan Hüseyin Balbıçak
  */
 public class Model extends Observable {
     /** Current contents of the board. */
@@ -24,6 +25,10 @@ public class Model extends Observable {
 
     /** Largest piece value. */
     public static final int MAX_PIECE = 2048;
+
+    /** Size of the board */
+    public static final int BOARD_SIZE = 4;
+
 
     /** A new 2048 game on a board of size SIZE with no pieces
      *  and score 0. */
@@ -106,13 +111,78 @@ public class Model extends Observable {
      *    value, then the leading two tiles in the direction of motion merge,
      *    and the trailing tile does not.
      * */
+
+
+    public int returnDesignatedRowValue(int col, int row, Tile tile, boolean merged) {
+        Tile checkedTile;
+        int checkedRow = 3;
+        if (merged) {
+            checkedRow -= 1;
+        }
+
+        for (int r = checkedRow; r > row; r--) {
+            checkedTile = board.tile(col, r);
+            if (checkedTile == null) {
+                return r;
+            } else if (checkedTile.value() == tile.value()) {
+                return r;
+            }
+        }
+        return row;
+    }
+
+
+
     public boolean tilt(Side side) {
         boolean changed;
         changed = false;
 
-        // TODO: Modify this.board (and perhaps this.score) to account
-        // for the tilt to the Side SIDE. If the board changed, set the
-        // changed local variable to true.
+        // TODO: Modify this.board (and perhaps this.score) to account for the tilt to the Side SIDE.
+        //  if the board changed set the changed local variable to true.
+
+        // todo: use the move method provided by the Board class
+        //  all tiles of the board must be accessed using the tile method provided by the Board class
+        //  I should only invoke move method on a given tile once per call to tilt
+        //  the created tile number updates the score by its value
+        //  set changed to true if changed
+
+        // todo: write something that kind of works and delete it and start over again
+        //  write helper methods
+        //  iterate starting from row 3 down
+        //  just think about the up version for now
+        //  the piece on the top row (row 3) stays put
+        //  the piece on the row 2 can only move up if that place empty or has the same value as itself
+        //  consider a method that processes a single column of the board since each is column is handled independently
+        //  consider a method that can return a desired row value
+        //  which row each tile should en up on is a hard problem to solve
+
+        switch (side) {
+            case NORTH, SOUTH, EAST, WEST -> board.setViewingPerspective(side);
+        }
+
+
+        Tile t;
+
+        boolean merged = false;
+        for (int c = 0; c < BOARD_SIZE; c++) {
+            for (int r = 2; r >= 0; r--) {
+                t = board.tile(c, r);
+                if (t != null) {
+                    int num = returnDesignatedRowValue(c, r, t, merged);
+                    if (num != r) {
+                        merged = board.move(c, num, t);
+                        changed = true;
+                        if (merged) {
+                            t = board.tile(c, num);
+                            this.score += t.value();
+                        }
+                    }
+                }
+            }
+            merged = false;
+        }
+
+        board.setViewingPerspective(Side.NORTH);
 
         checkGameOver();
         if (changed) {
@@ -137,7 +207,19 @@ public class Model extends Observable {
      *  Empty spaces are stored as null.
      * */
     public static boolean emptySpaceExists(Board b) {
-        // TODO: Fill in this function.
+        int flag = 0;
+
+        for (int i = 0; i < BOARD_SIZE; i++) {
+            for (int j = 0; j < BOARD_SIZE; j++) {
+                if (b.tile(j, i) == null) {
+                    flag = 1;
+                }
+            }
+        }
+
+        if (flag == 1) {
+            return true;
+        }
         return false;
     }
 
@@ -147,7 +229,22 @@ public class Model extends Observable {
      * given a Tile object t, we get its value with t.value().
      */
     public static boolean maxTileExists(Board b) {
-        // TODO: Fill in this function.
+        int flag = 0;
+        Tile temp;
+        for (int r = 0; r < BOARD_SIZE; r++) {
+            for (int c = 0; c < BOARD_SIZE; c++) {
+                temp = b.tile(c, r);
+                if (temp == null) {
+                    continue;
+                } else if (temp.value() == MAX_PIECE) {
+                    flag = 1;
+                };
+            }
+        }
+
+        if (flag == 1) {
+            return true;
+        }
         return false;
     }
 
@@ -158,7 +255,136 @@ public class Model extends Observable {
      * 2. There are two adjacent tiles with the same value.
      */
     public static boolean atLeastOneMoveExists(Board b) {
-        // TODO: Fill in this function.
+        int flag = 0;
+        Tile tempTile;
+        Tile adjacentTile;
+
+        for (int r = 0; r < BOARD_SIZE; r++) {
+            for (int c = 0; c < BOARD_SIZE; c++) {
+                tempTile = b.tile(c, r);
+                if (tempTile == null) {
+                    flag = 1;
+                    break;
+                }
+                if (r - 1 >= 0 && c - 1 >= 0 && r + 1 < BOARD_SIZE && c + 1 < BOARD_SIZE) {
+                    // CHECK TILE ABOVE
+                    adjacentTile = b.tile(c, r - 1);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+
+                    // CHECK TILE BELOW
+                    adjacentTile = b.tile(c, r + 1);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+
+                    // CHECK TILE ON THE RIGHT
+                    adjacentTile = b.tile(c + 1, r);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+
+                    // CHECK TILE ON THE LEFT
+                    adjacentTile = b.tile(c - 1, r);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+                }
+                // top left corner
+                if (r == 0 && c == 0) {
+                    // CHECK TILE RIGHT
+                    adjacentTile = b.tile(c + 1, r);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+                    // CHECK TILE BELOW
+                    adjacentTile = b.tile(c, r + 1);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+                }
+                // top right corner
+                if (r == 0 && c == 3) {
+                    // CHECK TILE LEFT
+                    adjacentTile = b.tile(c - 1, r);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+                    // CHECK TILE BELOW
+                    adjacentTile = b.tile(c, r + 1);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+                }
+                // bottom left corner
+                if (r == 3 && c == 0) {
+                    // CHECK TILE ABOVE
+                    adjacentTile = b.tile(c, r - 1);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+                    // CHECK TILE RIGHT
+                    adjacentTile = b.tile(c + 1, r);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+                }
+                // bottom right corner
+                if (r == 3 && c == 3) {
+                    // CHECK TILE ABOVE
+                    adjacentTile = b.tile(c, r - 1);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+                    // CHECK TILE LEFT
+                    adjacentTile = b.tile(c - 1, r);
+                    if (adjacentTile != null) {
+                        if (tempTile.value() == adjacentTile.value()) {
+                            flag = 1;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (flag == 1) {
+            return true;
+        }
         return false;
     }
 
